@@ -7,6 +7,7 @@ use std::fmt;
 
 pub static mut SOLVER_CALLS: usize = 0;
 
+#[derive(Debug, Clone)]
 pub struct SeriesSolver {
     pub max_iter: usize,
     pub tol_v: f64,
@@ -23,6 +24,7 @@ impl Default for SeriesSolver {
     }
 }
 
+#[derive(Clone)]
 pub struct Series {
     elements: Vec<PvCell>,
     solver: SeriesSolver,
@@ -32,7 +34,7 @@ pub struct Series {
 impl Series {
     pub fn empty() -> Series {
         return Series {
-            elements: vec![],
+            elements: Vec::new(),
             solver: SeriesSolver::default()
         };
     }

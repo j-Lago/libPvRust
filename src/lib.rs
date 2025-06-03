@@ -1,5 +1,6 @@
 mod pvcell;
 mod series;
+mod parallel;
 
 #[cfg(test)]
 mod tests {
