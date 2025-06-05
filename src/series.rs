@@ -1,9 +1,10 @@
-
-use crate::pvcell::{CellState, PvCell};
+use std::cmp::PartialEq;
+use crate::pvcell::{PvCellState, PvCell};
 use std::ops::Index;
 use std::iter::IntoIterator;
 use tracing::{warn, error};
 use std::fmt;
+
 
 pub static mut SOLVER_CALLS: usize = 0;
 
@@ -26,9 +27,10 @@ impl Default for SeriesSolver {
 
 #[derive(Clone)]
 pub struct Series {
-    elements: Vec<PvCell>,
-    solver: SeriesSolver,
+    pub elements: Vec<PvCell>,
+    pub solver: SeriesSolver,
 }
+
 
 #[allow(dead_code)]
 impl Series {
@@ -45,6 +47,7 @@ impl Series {
             solver: SeriesSolver::default()
         };
     }
+    
 
     /// builder: let s: Series = Series::new(...).with_solver(...);
     pub fn with_solver(mut self, settings: SeriesSolver) -> Series { self.solver = settings; return self; }
@@ -61,15 +64,15 @@ impl Series {
         self.elements.push(element);
     }
 
-    pub fn states_uniform_conditions(&self, irrad_ef: f64, cell_temp: f64) -> Vec<CellState> {
-        let mut states: Vec<CellState> = Vec::with_capacity(self.len());
+    pub fn states_uniform_conditions(&self, irrad_ef: f64, cell_temp: f64) -> Vec<PvCellState> {
+        let mut states: Vec<PvCellState> = Vec::with_capacity(self.len());
         for pnl in self.elements.iter(){
             states.push(pnl.compute_state(irrad_ef, cell_temp));
         }
         return states;
     }
 
-    pub fn vs_from_i(&self, states: &Vec<CellState>, i: f64) -> Vec<f64> {
+    pub fn vs_from_i(&self, states: &Vec<PvCellState>, i: f64) -> Vec<f64> {
         let mut voltages: Vec<f64> = Vec::with_capacity(self.len());
         for (k, pnl) in self.iter().enumerate(){
             voltages.push(pnl.v_from_i(&states[k], i))
@@ -77,12 +80,12 @@ impl Series {
         voltages
     }
 
-    pub fn v_from_i(&self, states: &Vec<CellState>, i: f64) -> f64 {
+    pub fn v_from_i(&self, states: &Vec<PvCellState>, i: f64) -> f64 {
         let voltages = self.vs_from_i(states, i);
         voltages.iter().sum()
     }
 
-    pub fn i_from_v(&self, states: &Vec<CellState>, v_str: f64) -> f64 {
+    pub fn i_from_v(&self, states: &Vec<PvCellState>, v_str: f64) -> f64 {
         unsafe{ SOLVER_CALLS += 1; }
 
         let mut sum_voc: f64 = 0.0;
@@ -121,7 +124,7 @@ impl Series {
         return i0;
     }
 
-    pub fn find(&self, other: &PvCell) -> Option<usize> {
+    pub fn find_series_equivalent(&self, other: &PvCell) -> Option<usize> {
         for (k, pnl) in self.elements.iter().enumerate(){
             if pnl.is_series_equivalent(other) {
                 return Some(k);
@@ -136,7 +139,7 @@ impl Series {
         let mut reduced_to_origin: Vec<Vec<u32>> = vec![];
 
         for i in 0..self.elements.len() {
-            match reduced.find(&self.elements[i]) {
+            match reduced.find_series_equivalent(&self.elements[i]) {
                 Some(j) => {
                     reduced.elements[j].ns += self.elements[i].ns;
                     reduced_to_origin[j].push(i as u32);
@@ -151,11 +154,23 @@ impl Series {
         }
         return (reduced, origin_to_reduced, reduced_to_origin);
     }
+
+    pub fn is_parallel_equivalent(&self, other: &Series) -> bool {
+        if self.len() != other.len(){ 
+            return false; 
+        }
+        for (s, o) in self.elements.iter().zip(other.elements.iter()) {
+            if !s.is_parallel_equivalent(o) {
+                return false; 
+            }
+        }
+        return true;
+    }
 }
 
 impl fmt::Debug for Series {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "PvString {:?}", &self.elements)
+        write!(f, "Series{:?}", &self.elements)
     }
 }
 

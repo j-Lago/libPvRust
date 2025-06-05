@@ -6,6 +6,8 @@ mod parallel;
 mod tests {
     use super::*;
 
+    use std::fs;
+
     use crate::pvcell::*;
     use crate::series::*;
     use std::time::Instant;
@@ -14,6 +16,51 @@ mod tests {
     use std::io::{self, BufRead};
     use std::path::Path;
     use tracing::subscriber::with_default;
+    use crate::parallel::Parallel;
+
+    const PARAMS: Params = Params::Basic{
+        a_ref: 1.81,
+        i_o_ref: 8.5e-11,
+        i_l_ref: 7.4,
+        r_s: 0.6,
+        r_sh_ref: 600.0,
+        alpha_sc: 3.8e-3,
+        v_oc_ref:48.6,
+    };
+    
+    #[test]
+    #[allow(dead_code)]
+    fn vetorizacao(){
+
+        let pnl = PvCell::new(&PARAMS);
+        let mut string = Series::new(vec![pnl; 5]);
+        
+        string.elements[0].a_ref = 1.92;
+        string.elements[1].np = 2;
+        println!("{:?}", &string);
+        let (string2, _, _)  = string.clone().reduce();
+        println!("{:?}", &string2);
+        
+        let array = Parallel::new(vec![string.clone(), string, string2]);
+        println!("{:?}", &array);
+        
+        let (array2, _, _) = array.reduce();
+        println!("{:?}", &array2);
+
+        // let conditions = [[200.0, 60.0], [800.0, 30.0], [600.0, 25.0], [999.0, 45.0]];
+        // // let voltages = [40.0, 80.0, 90.0, 110.0, 125.0];
+        // 
+        // let mut states: Vec<Vec<PvCellState>> = Vec::with_capacity(conditions.len());
+        // // let mut power: Vec<f64> = Vec::with_capacity(conditions.len());
+        // 
+        // for cond in conditions {
+        //     states.push(string.states_uniform_conditions(cond[0], cond[1]));
+        // }
+        // // println!("{:#?}", states);
+        
+        
+        
+    }
 
 
     #[test]
@@ -93,6 +140,18 @@ mod tests {
         let log_path_str = format!("./log/{}", filename);
         let log_path = Path::new(log_path_str.as_str());
 
+        if let Some(log_folder) = log_path.parent() {
+            if !log_folder.exists() {
+                match fs::create_dir_all(log_folder) {
+                    Ok(_) => println!("Pasta {:?} criada com sucesso!", log_folder),
+                    Err(e) => println!("Erro ao criar a pasta: {}", e),
+                }
+            }
+        } else {
+            println!("Não foi possível determinar a pasta.");
+        }
+
+
         let file = std::fs::File::create(log_path).unwrap();
         let subscriber = tracing_subscriber::fmt()
             .with_writer(BoxMakeWriter::new(file))
@@ -116,7 +175,7 @@ mod tests {
         for _ in 0..repeat_n {
             for cond in conditions {
                 let (irrad, temp) = cond;
-                let states: Vec<CellState> = string.states_uniform_conditions(irrad, temp);
+                let states: Vec<PvCellState> = string.states_uniform_conditions(irrad, temp);
                 for v in voltages {
                     let i = string.i_from_v(&states, v);
                     let v2 = string.v_from_i(&states, i);

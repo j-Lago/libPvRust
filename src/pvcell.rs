@@ -12,7 +12,7 @@ use tracing::{warn, error};
 pub static mut SOLVER_CALLS: usize = 0;
 
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct PvCellSolver {
     pub max_iter: usize,    // max number of iterations
     pub tol_i: f64, // [A] current tolerance
@@ -26,7 +26,7 @@ impl Default for PvCellSolver {
 }
 
 #[derive(Clone, Debug)]
-pub struct CellState{
+pub struct PvCellState {
     pub gsh: f64,
     pub ra: f64,
     pub i0: f64,
@@ -38,7 +38,7 @@ pub enum Params{
     Extended { a_ref: f64, i_o_ref: f64, i_l_ref: f64, r_s: f64, r_sh_ref: f64, alpha_sc: f64, v_oc_ref: f64, v_bypass: f64, r_bypass: f64, eg_ref: f64, degdt: f64 }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct PvCell {
     pub a_ref: f64,
     pub i_o_ref: f64,
@@ -60,15 +60,15 @@ pub struct PvCell {
 #[allow(dead_code)]
 impl PvCell {
     pub fn new(params: &Params) -> Self {
-        match params {
-            &Params::Basic{a_ref, i_o_ref, i_l_ref, r_s, r_sh_ref, alpha_sc, v_oc_ref} => {
+        match *params {
+            Params::Basic{a_ref, i_o_ref, i_l_ref, r_s, r_sh_ref, alpha_sc, v_oc_ref} => {
                 PvCell {
                     a_ref, i_o_ref, i_l_ref, r_s, r_sh_ref, alpha_sc, v_oc_ref,
                     v_bypass: -0.65 * 3.0, r_bypass: 0.1, eg_ref: 1.121, degdt: -0.0002677,
                     shading: 0.0, np: 1, ns: 1, solver: PvCellSolver::default()
                 }
             }
-            &Params::Extended{a_ref, i_o_ref, i_l_ref, r_s, r_sh_ref, alpha_sc, v_oc_ref,
+            Params::Extended{a_ref, i_o_ref, i_l_ref, r_s, r_sh_ref, alpha_sc, v_oc_ref,
                 v_bypass, r_bypass, eg_ref, degdt} => {
                 PvCell {
                     a_ref, i_o_ref, i_l_ref, r_s, r_sh_ref, alpha_sc, v_oc_ref,
@@ -85,7 +85,7 @@ impl PvCell {
     pub fn with_shading(mut self, shading: f64) -> Self{ self.shading = shading; return self; }
     pub fn with_solver(mut self, settings: PvCellSolver) -> Self { self.solver = settings; return self; }
 
-    pub fn compute_state(&self, irrad_ef: f64, cell_temp: f64) -> CellState {
+    pub fn compute_state(&self, irrad_ef: f64, cell_temp: f64) -> PvCellState {
         let irrad: f64 = irrad_ef * (1.0 - self.shading);
         let tj: f64 = cell_temp + C_TO_K;
         let eg: f64 = self.eg_ref * (1. + self.degdt  * (tj - T_REF));
@@ -93,10 +93,10 @@ impl PvCell {
         let ra: f64 = T_REF / (self.a_ref * tj);
         let i0: f64 = self.i_o_ref  * (tj / T_REF).powi(3) * (Q_K * (self.eg_ref / T_REF - eg / tj)).exp();
         let il: f64 = (self.i_l_ref + self.alpha_sc * (tj - T_REF)) * irrad / S_REF;
-        CellState{gsh, ra, i0, il}
+        PvCellState {gsh, ra, i0, il}
     }
 
-    pub fn solve_i(&self, state: &CellState, v_pnl: f64) -> f64 {
+    pub fn solve_i(&self, state: &PvCellState, v_pnl: f64) -> f64 {
         unsafe{ SOLVER_CALLS += 1}
         let mut i: f64 = 0.0;
         let v: f64 = v_pnl / (self.ns as f64);
@@ -128,7 +128,7 @@ impl PvCell {
         return i;
     }
 
-    pub fn v_from_i(&self, state: &CellState, i_pnl: f64) -> f64 {
+    pub fn v_from_i(&self, state: &PvCellState, i_pnl: f64) -> f64 {
         unsafe{ SOLVER_CALLS += 1}
         let mut v: f64 = self.v_oc_ref;
         let i: f64 = i_pnl / (self.np as f64);
@@ -161,23 +161,27 @@ impl PvCell {
         return v;
     }
 
+    pub fn is_extended_params_equivalent(&self, other: &PvCell) -> bool {
+        self.a_ref == other.a_ref && 
+        self.i_o_ref == other.i_o_ref && 
+        self.i_l_ref == other.i_l_ref && 
+        self.r_s == other.r_s && 
+        self.r_sh_ref == other.r_sh_ref && 
+        self.alpha_sc == other.alpha_sc && 
+        self.v_oc_ref == other.v_oc_ref && 
+        self.v_bypass == other.v_bypass && 
+        self.r_bypass == other.r_bypass && 
+        self.eg_ref == other.eg_ref && 
+        self.degdt == other.degdt && 
+        self.shading == other.shading
+    }
+    
     pub fn is_series_equivalent(&self, other: &PvCell) -> bool {
-        return
-            self.a_ref == other.a_ref &&
-            self.i_o_ref == other.i_o_ref &&
-            self.i_l_ref == other.i_l_ref &&
-            self.r_s == other.r_s &&
-            self.r_sh_ref == other.r_sh_ref &&
-            self.alpha_sc == other.alpha_sc &&
-            self.v_oc_ref == other.v_oc_ref &&
-            self.v_bypass == other.v_bypass &&
-            self.r_bypass == other.r_bypass &&
-            self.eg_ref == other.eg_ref &&
-            self.degdt == other.degdt &&
-            self.shading == other.shading &&
-            // self.ns == other.ns &&
-            self.np == other.np
-            // self.solver_settings == other.solver_settings;
+            self.is_extended_params_equivalent(other) && self.np == other.np
+    }
+
+    pub fn is_parallel_equivalent(&self, other: &PvCell) -> bool {
+        self.is_extended_params_equivalent(other) && self.ns == other.ns
     }
 }
 
