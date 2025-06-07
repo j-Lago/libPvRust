@@ -47,11 +47,11 @@ impl Parallel {
         Parallel{ elements: Vec::new(), solver: ParallelSolver::default() }
     }
 
-    pub fn with_solver(settings: ParallelSolver) -> Self {
-        println!("{:?}", &settings);
-        todo!()
+    fn with_solver(mut self, settings: ParallelSolver) -> Self {
+        self.solver = settings;
+        self
     }
-    
+
     pub fn len(&self) -> usize {
         self.elements.len()
     }
@@ -62,7 +62,7 @@ impl Parallel {
                 return Some(k);
             }
         }
-        
+
         return None;
     }
 
@@ -72,7 +72,7 @@ impl Parallel {
         let mut reduced_to_origin: Vec<Vec<u32>> = vec![];
 
         for i in 0..self.elements.len() {
-            
+
             let (copy, _, _) = self.elements[i].reduce();
             match reduced.find_parallel_equivalent(&copy) {
                 Some(j) => {

@@ -33,9 +33,14 @@ pub struct PvCellState {
     pub il: f64,
 }
 
-pub enum Params{
-    Basic { a_ref: f64, i_o_ref: f64, i_l_ref: f64, r_s: f64, r_sh_ref: f64, alpha_sc: f64, v_oc_ref: f64 },
-    Extended { a_ref: f64, i_o_ref: f64, i_l_ref: f64, r_s: f64, r_sh_ref: f64, alpha_sc: f64, v_oc_ref: f64, v_bypass: f64, r_bypass: f64, eg_ref: f64, degdt: f64 }
+pub struct BasicParams {
+    pub a_ref: f64,
+    pub i_o_ref: f64,
+    pub i_l_ref: f64,
+    pub r_s: f64,
+    pub r_sh_ref: f64,
+    pub alpha_sc: f64,
+    pub v_oc_ref: f64
 }
 
 #[derive(Clone, PartialEq)]
@@ -57,25 +62,35 @@ pub struct PvCell {
     pub solver: PvCellSolver,
 }
 
+impl PvCell {
+    pub(crate) fn default() -> PvCell {
+        PvCell {
+            a_ref: f64::NAN,
+            i_o_ref: f64::NAN,
+            i_l_ref: f64::NAN,
+            r_s: f64::NAN,
+            r_sh_ref: f64::NAN,
+            alpha_sc: f64::NAN,
+            v_oc_ref: f64::NAN,
+            v_bypass: -0.65 * 3.0,
+            r_bypass: 0.1,
+            eg_ref: 1.121,
+            degdt: -0.0002677,
+            shading: 0.0,
+            np: 1,
+            ns: 1,
+            solver: PvCellSolver::default()
+        }
+    }
+}
+
 #[allow(dead_code)]
 impl PvCell {
-    pub fn new(params: &Params) -> Self {
-        match *params {
-            Params::Basic{a_ref, i_o_ref, i_l_ref, r_s, r_sh_ref, alpha_sc, v_oc_ref} => {
-                PvCell {
-                    a_ref, i_o_ref, i_l_ref, r_s, r_sh_ref, alpha_sc, v_oc_ref,
-                    v_bypass: -0.65 * 3.0, r_bypass: 0.1, eg_ref: 1.121, degdt: -0.0002677,
-                    shading: 0.0, np: 1, ns: 1, solver: PvCellSolver::default()
-                }
-            }
-            Params::Extended{a_ref, i_o_ref, i_l_ref, r_s, r_sh_ref, alpha_sc, v_oc_ref,
-                v_bypass, r_bypass, eg_ref, degdt} => {
-                PvCell {
-                    a_ref, i_o_ref, i_l_ref, r_s, r_sh_ref, alpha_sc, v_oc_ref,
-                    v_bypass, r_bypass, eg_ref, degdt,
-                    shading: 0.0, np: 1, ns: 1, solver: PvCellSolver::default()
-                }
-            }
+    pub fn new(params: &BasicParams) -> Self {
+        PvCell {
+            a_ref: params.a_ref, i_o_ref: params.i_o_ref, i_l_ref: params.i_l_ref, r_s: params.r_s,
+            r_sh_ref: params.r_sh_ref, alpha_sc: params.alpha_sc, v_oc_ref: params.v_oc_ref,
+            ..PvCell::default()
         }
     }
 

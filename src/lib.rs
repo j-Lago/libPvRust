@@ -18,7 +18,7 @@ mod tests {
     use tracing::subscriber::with_default;
     use crate::parallel::Parallel;
 
-    const PARAMS: Params = Params::Basic{
+    const PARAMS: BasicParams = BasicParams{
         a_ref: 1.81,
         i_o_ref: 8.5e-11,
         i_l_ref: 7.4,
@@ -79,7 +79,7 @@ mod tests {
 
         let mut sum_p: f64 = 0.0;
 
-        let params0 = Params::Basic{
+        let params0 = BasicParams{
             a_ref: 1.81,
             i_o_ref: 8.5e-11,
             i_l_ref: 7.4,
@@ -88,7 +88,8 @@ mod tests {
             alpha_sc: 3.8e-3,
             v_oc_ref:48.6,
         };
-        let params1 = Params::Extended{
+
+        let params1 = PvCell{
             a_ref: 1.94,
             i_o_ref: 2.5e-11,
             i_l_ref: 9.3,
@@ -100,6 +101,8 @@ mod tests {
             r_bypass: 0.1,
             eg_ref: 1.121,
             degdt: -0.0002677,
+            np: 2,
+            ..PvCell::default()
         };
 
         let solver_settings = PvCellSolver {
@@ -109,8 +112,8 @@ mod tests {
         };
 
         let pnl0: PvCell = PvCell::new(&params0).with_ns(3).with_np(1).with_solver(solver_settings);
-        let pnl1: PvCell = PvCell::new(&params1).with_np(2);
-        let pnl2: PvCell = PvCell::new(&Params::Basic{
+        let pnl1: PvCell = PvCell{..params1};
+        let pnl2: PvCell = PvCell::new(&BasicParams{
             a_ref: 1.94,
             i_o_ref: 2.5e-11,
             i_l_ref: 9.3,
