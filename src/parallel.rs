@@ -1,5 +1,5 @@
 use std::fmt;
-use crate::pvcell::PvCell;
+use crate::pvcell::{PvCell, PvCellState};
 use crate::series::{Series};
 
 // pub static mut SOLVER_CALLS: usize = 0;
@@ -47,7 +47,7 @@ impl Parallel {
         Parallel{ elements: Vec::new(), solver: ParallelSolver::default() }
     }
 
-    fn with_solver(mut self, settings: ParallelSolver) -> Self {
+    pub fn with_solver(mut self, settings: ParallelSolver) -> Self {
         self.solver = settings;
         self
     }
@@ -92,4 +92,19 @@ impl Parallel {
         return (reduced, origin_to_reduced, reduced_to_origin);
     }
 
+    pub fn states_uniform_conditions(&self, irrad_ef: f64, cell_temp: f64) -> Vec<Vec<PvCellState>> {
+        let mut states: Vec<Vec<PvCellState>> = Vec::with_capacity(self.len());
+        for string in self.elements.iter(){
+            states.push(string.states_uniform_conditions(irrad_ef, cell_temp));
+        }
+        return states;
+    }
+
+    pub fn i_from_v(&self, states: &Vec<Vec<PvCellState>>, v: f64) -> f64 {
+        let mut i_arr = 0.0;
+        for (k, it) in self.elements.iter().enumerate() {
+            i_arr += it.i_from_v(&states[k], v)
+        }
+        return i_arr;
+    }
 }

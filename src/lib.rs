@@ -41,10 +41,10 @@ mod tests {
         let (string2, _, _)  = string.clone().reduce();
         println!("{:?}", &string2);
         
-        let array = Parallel::new(vec![string.clone(), string, string2]);
-        println!("{:?}", &array);
+        let array1 = Parallel::new(vec![string.clone(), string, string2]);
+        println!("{:?}", &array1);
         
-        let (array2, _, _) = array.reduce();
+        let (array2, _, _) = array1.reduce();
         println!("{:?}", &array2);
 
         // let conditions = [[200.0, 60.0], [800.0, 30.0], [600.0, 25.0], [999.0, 45.0]];
@@ -58,7 +58,20 @@ mod tests {
         // }
         // // println!("{:#?}", states);
         
+        let conditions = [600.0, 25.0];
+        let voltage = 125.0;
         
+        let states1 = array1.states_uniform_conditions(conditions[0], conditions[1]);
+        let states2 = array2.states_uniform_conditions(conditions[0], conditions[1]);
+        
+        let i1 = array1.i_from_v(&states1, voltage);
+        let i2 = array2.i_from_v(&states2, voltage);
+        // 
+        println!("i1 = {:?}", &i1);
+        println!("i2 = {:?}", &i2);
+        
+        // println!(">>>>>>>> {:?}", &states1);
+        // println!(">>>>>>>> {:?}", &states2);
         
     }
 
